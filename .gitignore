@@ -10,3 +10,4 @@ lib64
 *.log
 *.fdb_latexmk
 *.synctex.gz
+.idea
