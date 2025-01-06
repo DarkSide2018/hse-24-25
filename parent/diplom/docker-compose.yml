@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:latest            # Use the latest PostgreSQL image
+    container_name: diplom_postgres
+    environment:
+      POSTGRES_USER: myuser           # Set the default user
+      POSTGRES_PASSWORD: mypassword    # Set the user's password
+      POSTGRES_DB: diplom_db          # Set the default database
+    ports:
+      - "6000:5432"                    # Map host port 5432 to container port 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Persist data in a named volume
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  postgres_data:
