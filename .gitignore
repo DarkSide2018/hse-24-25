@@ -2,6 +2,8 @@
 .venv
 bin
 lib
+*.xml
+*.db
 lib64
 **/data/**
 *.csv

@@ -1,3 +1,4 @@
+import json
 from time import sleep
 
 import requests
@@ -8,9 +9,19 @@ from parent.diplom.service import insert_press_release, extract_date, insert_onl
 
 base_url="https://www.cbr.ru"
 
+def fetch_cbr_api(url):
+    content = requests.get(url).text
+    data = json.loads(content)
+    for doc in data:
+        sleep(30)
+        doc_html = doc['doc_htm']
+        document = requests.get(base_url+'/press/pr/?file='+doc_html).text
+        soup = BeautifulSoup(document, 'html.parser')
+        landing_text = soup.find('div', class_='landing-text')
+        print(landing_text.get_text())
+
 def fetch_links_with_phrase(url, phrase):
     try:
-        print("url",url)
         response = requests.get(url, verify=True)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
