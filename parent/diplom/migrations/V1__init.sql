@@ -1,0 +1,1 @@
+ALTER TABLE dip_schema.press_release ADD updated_at timestamp DEFAULT now() NULL;

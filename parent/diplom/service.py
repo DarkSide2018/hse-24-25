@@ -8,7 +8,7 @@ DB_PORT=6000
 DB_NAME = 'diplom_db'
 DB_USER = 'myuser'
 DB_PASSWORD = 'mypassword'
-base_url="https://www.cbr.ru"
+
 
 conn = psycopg2.connect(
     host=DB_HOST,

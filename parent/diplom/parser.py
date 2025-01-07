@@ -1,14 +1,17 @@
 from time import sleep
+
 import requests
 from bs4 import BeautifulSoup
 import re
-from parent.diplom.service import insert_press_release, base_url, extract_date, insert_only_source_text, \
+from parent.diplom.service import insert_press_release, extract_date, insert_only_source_text, \
     select_only_sources_where_key_rate_is_null
 
+base_url="https://www.cbr.ru"
 
 def fetch_links_with_phrase(url, phrase):
     try:
-        response = requests.get(url)
+        print("url",url)
+        response = requests.get(url, verify=True)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         links = soup.findAll('a')
@@ -19,31 +22,50 @@ def fetch_links_with_phrase(url, phrase):
 
         a_hrefs_db = select_only_sources_where_key_rate_is_null()
         for href in a_hrefs_db:
-            sleep(30)
-            content = requests.get(href).text
-            extracted_date = extract_date(content)
-            if extracted_date:
-                print("extracted_date :", extracted_date)
-            soup_inner = BeautifulSoup(content, 'html.parser')
-            referenceable = soup_inner.find('span', class_='referenceable')
-            if referenceable:
+            try:
+              sleep(30)
+              print("current_href",href)
+              content = requests.get(href).text
+              extracted_date = extract_date(content)
+              soup_inner = BeautifulSoup(content, 'html.parser')
+              referenceable = soup_inner.find('span', class_='referenceable')
               content_span = referenceable.get_text(strip=True)
               key_rate_pattern = re.search(r'(\d+[,\.]?\d*)%', content_span)
-              percent_value = key_rate_pattern.group(1).replace(',', '.')
-              print("content-span",content_span)
-              print("percent_value",percent_value)
-              insert_press_release(
-                  content,
-                  percent_value,
-                  href,
-                  extracted_date
-              )
+              if key_rate_pattern is not None:
+                percent_value = key_rate_pattern.group(1).replace(',', '.')
+                print("content-span",content_span)
+                print("percent_value",percent_value)
+                insert_press_release(
+                    content,
+                    percent_value,
+                    href,
+                    extracted_date
+                )
+                continue
+              landing_text = soup_inner.find('div', class_='landing-text')
+              match = re.search(r'до\s(\d{1,2},\d{1,2})%',landing_text.get_text(strip=True))
+              if match:
+                insert_press_release(
+                    content,
+                    match.group(1).replace(',', '.').replace('%', ''),
+                    href,
+                    extracted_date
+                )
+                continue
+              match = re.search(r'на\sуровне\s(\d{1,2},\d{1,2})%',landing_text.get_text(strip=True))
+              if match:
+                  insert_press_release(
+                      content,
+                      match.group(1).replace(',', '.').replace('%', ''),
+                      href,
+                      extracted_date
+                  )
+
+            except Exception as e:
+              print(f"An error occurred: {e} href: {href}")
     except Exception as e:
         print(f"An error occurred: {e}")
-        return []
+        return
 
-url_welcome_page = "/dkp/cal_mp/#t11"
-phrase = "Пресс-релиз"
 
-fetch_links_with_phrase(base_url+url_welcome_page, phrase)
 
