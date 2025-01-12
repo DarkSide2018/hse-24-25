@@ -1,11 +1,11 @@
 import json
-from time import sleep
+from time import sleep, time
 
 import requests
 from bs4 import BeautifulSoup
 import re
 from parent.diplom.service import insert_press_release, extract_date, insert_only_source_text, \
-    select_only_sources_where_key_rate_is_null
+    select_only_sources_where_key_rate_is_null, select_releases_where_text_is_null, select_nearest_key_rate_by_date
 
 base_url="https://www.cbr.ru"
 
@@ -13,12 +13,32 @@ def fetch_cbr_api(url):
     content = requests.get(url).text
     data = json.loads(content)
     for doc in data:
-        sleep(30)
         doc_html = doc['doc_htm']
-        document = requests.get(base_url+'/press/pr/?file='+doc_html).text
-        soup = BeautifulSoup(document, 'html.parser')
-        landing_text = soup.find('div', class_='landing-text')
-        print(landing_text.get_text())
+        date_update = doc['dateupdate']
+        html = base_url + '/press/pr/?file=' + doc_html
+        print("url",html)
+        insert_only_source_text(html,date_update)
+
+def fetch_source_text_from_db():
+    sources = select_releases_where_text_is_null()
+    print("sources count", len(sources))
+    for s in sources:
+        sleep(240)
+        response = requests.get(s, verify=True)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        release_date = extract_date(response.text)
+        key_rate = select_nearest_key_rate_by_date(release_date)
+        if len(key_rate)==0:
+            print("key_rate",key_rate)
+            print("source_text:",s)
+        else:
+          landing_text = (soup
+                          .find('div', class_='landing-text')
+                          .get_text(strip=True)
+                          .replace("При использовании материала ссылка на Пресс-службу Банка России обязательна.",""))
+          insert_press_release(landing_text,key_rate[0][0],s,release_date)
+    return ""
 
 def fetch_links_with_phrase(url, phrase):
     try:

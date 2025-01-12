@@ -18,6 +18,35 @@ conn = psycopg2.connect(
     password=DB_PASSWORD
 )
 
+def select_nearest_key_rate_by_date(date):
+    cursor = conn.cursor()
+    cursor.execute("SET search_path to dip_schema;")
+    conn.commit()
+    cursor_select = conn.cursor()
+    print("date",date)
+    cursor_select.execute(sql.SQL("""select key_rate from press_release pr
+                                  where release_date < %s and key_rate is not null order by release_date desc limit 1;
+                                  """), (date,))
+    result = cursor_select.fetchall()
+    cursor_select.close()
+    print("result",result)
+    return result
+
+
+def select_releases_where_text_is_null():
+    cursor = conn.cursor()
+    cursor.execute("SET search_path to dip_schema;")
+    conn.commit()
+    cursor_select = conn.cursor()
+    cursor_select.execute(sql.SQL("select source_text from press_release pr where text is null"))
+    res=[]
+    result = cursor_select.fetchall()
+    for row in result:
+        res.append(row[0])
+    print("text is null", res)
+    cursor_select.close()
+    return res
+
 def select_only_sources_where_key_rate_is_null():
     cursor = conn.cursor()
     cursor.execute("SET search_path to dip_schema;")
@@ -29,9 +58,10 @@ def select_only_sources_where_key_rate_is_null():
     for row in result:
         res.append(row[0])
     print("key_rate is null", res)
+    cursor_select.close()
     return res
 
-def insert_only_source_text(source_text):
+def insert_only_source_text(source_text,date_update):
     cursor = conn.cursor()
     cursor.execute("SET search_path to dip_schema;")
     conn.commit()
@@ -42,11 +72,12 @@ def insert_only_source_text(source_text):
     if exists == 0:
         insert_query = sql.SQL("""
               INSERT INTO press_release (
-              source_text
+              source_text,
+              release_date
                )
-              VALUES (%s);
+              VALUES (%s,%s);
           """)
-        cursor.execute(insert_query, (source_text,))
+        cursor.execute(insert_query, (source_text,date_update))
         conn.commit()
         cursor.close()
         print("source_text inserted successfully.")
