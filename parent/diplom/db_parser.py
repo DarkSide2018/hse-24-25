@@ -1,7 +1,8 @@
 
+
 import schedule
 import time
-from parent.diplom.parser import fetch_source_text_from_db
+from parent.diplom.parser import fetch_only_change_releases
 
 
 def run_scheduler():
@@ -10,7 +11,7 @@ def run_scheduler():
         schedule.run_pending()
         time.sleep(5)
         try:
-          fetch_source_text_from_db()
+          fetch_only_change_releases()
         except Exception:
           print("Connection error trying again")
 

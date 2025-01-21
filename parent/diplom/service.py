@@ -32,6 +32,19 @@ def select_nearest_key_rate_by_date(date):
     print("result",result)
     return result
 
+def select_release_where_html_exists():
+    cursor = conn.cursor()
+    cursor.execute("SET search_path to dip_schema;")
+    conn.commit()
+    cursor_select = conn.cursor()
+    cursor_select.execute(sql.SQL("select id, text from press_release pr where text like '%</html>'"))
+    res=[]
+    result = cursor_select.fetchall()
+    for row in result:
+        res.append((row[0],row[1]))
+    print("text with html", res)
+    cursor_select.close()
+    return res
 
 def select_releases_where_text_is_null():
     cursor = conn.cursor()
@@ -82,13 +95,31 @@ def insert_only_source_text(source_text,date_update):
         cursor.close()
         print("source_text inserted successfully.")
 
+def insert_text_by_id(id, text):
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SET search_path to dip_schema;")
+        conn.commit()
+        insert_query = sql.SQL("""
+              update press_release set
+              text = %s
+              where id = %s;
+          """)
+        cursor.execute(insert_query, (text,id))
+        conn.commit()
+        print("Data inserted successfully.")
+    except Exception as e:
+        print("An error occurred while inserting data:", e)
+    finally:
+        cursor.close()
+
 def insert_press_release(text, key_rate, source_text, release_date):
     cursor = conn.cursor()
     try:
         cursor.execute("SET search_path to dip_schema;")
         conn.commit()
         cursor_exists = conn.cursor()
-        cursor_exists.execute(sql.SQL("SELECT COUNT(*) FROM press_release WHERE source_text = %s and key_rate is null"), [source_text])
+        cursor_exists.execute(sql.SQL("SELECT COUNT(*) FROM press_release WHERE source_text = %s"), [source_text])
         exists = cursor_exists.fetchone()[0]
         cursor_exists.close()
         if exists == 1:

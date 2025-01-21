@@ -5,7 +5,8 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from parent.diplom.service import insert_press_release, extract_date, insert_only_source_text, \
-    select_only_sources_where_key_rate_is_null, select_releases_where_text_is_null, select_nearest_key_rate_by_date
+    select_only_sources_where_key_rate_is_null, select_releases_where_text_is_null, select_nearest_key_rate_by_date, \
+    select_release_where_html_exists, insert_text_by_id
 
 base_url="https://www.cbr.ru"
 
@@ -19,25 +20,34 @@ def fetch_cbr_api(url):
         print("url",html)
         insert_only_source_text(html,date_update)
 
+def fetch_only_change_releases():
+    texts = select_release_where_html_exists()
+    print("texts count", len(texts))
+    for t in texts:
+        soup = BeautifulSoup(t[1], 'html.parser')
+        landing_text = (soup
+                        .find('div', class_='landing-text')
+                        .get_text(strip=True)
+                        .replace("При использовании материала ссылка на Пресс-службу Банка России обязательна.",""))
+        insert_text_by_id(t[0],landing_text)
+    return ""
 def fetch_source_text_from_db():
     sources = select_releases_where_text_is_null()
     print("sources count", len(sources))
     for s in sources:
-        sleep(240)
         response = requests.get(s, verify=True)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        release_date = extract_date(response.text)
+        text = soup.find('div', class_='landing-text').get_text(strip=True)
+        release_date = extract_date(text)
         key_rate = select_nearest_key_rate_by_date(release_date)
-        if len(key_rate)==0:
-            print("key_rate",key_rate)
-            print("source_text:",s)
-        else:
-          landing_text = (soup
+        if len(key_rate) == 0:
+            key_rate =[(5.5,)]
+        landing_text = (soup
                           .find('div', class_='landing-text')
                           .get_text(strip=True)
                           .replace("При использовании материала ссылка на Пресс-службу Банка России обязательна.",""))
-          insert_press_release(landing_text,key_rate[0][0],s,release_date)
+        insert_press_release(landing_text,key_rate[0][0],s,release_date)
     return ""
 
 def fetch_links_with_phrase(url, phrase):
